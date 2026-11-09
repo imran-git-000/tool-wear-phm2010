@@ -1,0 +1,1 @@
+This repository is focused on RUL estimation for a high-speed CNC milling machine (PHM data challenge 2010).

@@ -1,0 +1,17 @@
+[project]
+name = "tool-wear-phm2010"
+version = "0.1.0"
+description = "This repository is focused on RUL estimation for a high-speed CNC milling machine (PHM data challenge 2010)."
+readme = "README.md"
+authors = [
+    { name = "imran-git-000", email = "imran.chouybat1@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+tool-wear-phm2010 = "tool_wear_phm2010:main"
+
+[build-system]
+requires = ["uv_build>=0.12.9,<0.13.0"]
+build-backend = "uv_build"
