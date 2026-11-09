@@ -7,11 +7,51 @@ authors = [
     { name = "imran-git-000", email = "imran.chouybat1@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "dotenv>=0.9.9",
+    "ipykernel>=7.3.0",
+    "loguru>=0.7.3",
+    "tensorboard>=2.21.0",
+    "torch>=2.13.0",
+    "torchvision>=0.28.0",
+    "tqdm>=4.70.0",
+]
 
-[project.scripts]
-tool-wear-phm2010 = "tool_wear_phm2010:main"
+# optional grouped dependencies that are installed only when explicitly requested
+[project.optional-dependencies]
+
+data = [
+    # "polars==1.13.1"
+]
+
+
+# dev dependencies are installed during development but no for package
+[dependency-groups]
+
+# dependencies needed to lint and run tests
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-asyncio",
+    "pytest-xdist[psutil]",
+    "ruff",
+    "ty",
+]
+
 
 [build-system]
-requires = ["uv_build>=0.12.9,<0.13.0"]
+requires = ["uv_build>=0.12.5,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu130" }]
+torchvision = [{ index = "pytorch-cu130" }]

@@ -1,0 +1,6 @@
+#!/bin/sh
+just lint-on-push
+branch=$(git rev-parse --symbolic --abbrev-ref HEAD)
+if [ "main" == "$branch" ] || [ "pre" == "$branch" ] || [ "dev" == "$branch" ]; then
+    just test
+fi
