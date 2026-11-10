@@ -153,3 +153,6 @@ reports/
 
 # tensorboard runs
 runs/
+
+# claude instructions
+CLAUDE.md
