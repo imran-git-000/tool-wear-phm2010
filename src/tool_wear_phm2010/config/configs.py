@@ -4,6 +4,20 @@ from tool_wear_phm2010.data_types.enums import Aggregation
 
 
 @dataclass
+class ModelConfig:
+    """Transformer encoder hyperparameters."""
+
+    num_channels: int
+    window_size: int
+    patch_size: int  # samples per token; window_size must be a multiple
+    hidden_size: int
+    num_hidden_layers: int
+    num_attention_heads: int
+    intermediate_size: int
+    dropout: float
+
+
+@dataclass
 class TrainConfig:
     """Training loop configuration."""
 
