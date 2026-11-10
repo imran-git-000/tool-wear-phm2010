@@ -188,15 +188,45 @@ class Pipeline:
         eval_result: EvalResult,
         path: Path,
     ) -> None:
-        fig = Figure(figsize=(10, 4))
+        """Measured vs predicted wear per cut, saved as 300 dpi PNG and PDF."""
+        metrics = eval_result.metrics
+        fig = Figure(figsize=(6.5, 3.0), layout='constrained')
         ax = fig.subplots()
-        ax.plot(cut_indices, eval_result.targets, label='measured')
-        ax.plot(cut_indices, eval_result.predictions, label='predicted')
-        ax.set(
-            title=(f'{test_cutter}: RMSE {eval_result.metrics.rmse:.4f} mm'),
-            xlabel='cut',
-            ylabel='wear (mm)',
+        # mm -> µm: the dataset's own unit, easier to read
+        ax.plot(
+            cut_indices,
+            eval_result.targets * 1000,
+            color='black',
+            linewidth=1.6,
+            label='Measured',
         )
-        ax.legend()
+        ax.plot(
+            cut_indices,
+            eval_result.predictions * 1000,
+            color='#d62728',
+            linewidth=1.0,
+            label='Predicted',
+        )
+        ax.text(
+            0.02,
+            0.96,
+            f'RMSE = {metrics.rmse * 1000:.1f} µm\n'
+            f'MAE = {metrics.mae * 1000:.1f} µm\n'
+            f'$R^2$ = {metrics.r2:.2f}',
+            transform=ax.transAxes,
+            va='top',
+            fontsize=9,
+            bbox={'facecolor': 'white', 'edgecolor': '0.8', 'pad': 3},
+        )
+        ax.set_title(f'Test cutter {test_cutter}', fontsize=10)
+        ax.set_xlabel('Cut number', fontsize=10)
+        ax.set_ylabel('Flank wear (µm)', fontsize=10)
+        ax.set_xlim(min(cut_indices), max(cut_indices))
+        ax.tick_params(labelsize=9)
+        ax.grid(alpha=0.3, linestyle='--', linewidth=0.5)
+        ax.spines[['top', 'right']].set_visible(False)
+        ax.legend(loc='lower right', fontsize=9, frameon=False)
+
         path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(path, dpi=120, bbox_inches='tight')
+        fig.savefig(path, dpi=300)
+        fig.savefig(path.with_suffix('.pdf'))
