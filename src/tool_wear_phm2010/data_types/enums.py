@@ -9,3 +9,8 @@ class Channel(Enum):
     VIB_Y = 'vib_y'
     VIB_Z = 'vib_z'
     AE_RMS = 'ae_rms'
+
+
+class Aggregation(Enum):
+    MEAN = 'mean'
+    MEDIAN = 'median'

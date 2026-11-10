@@ -18,28 +18,24 @@ if TYPE_CHECKING:
 
 
 class Trainer:
-    """Train a model on (n_channels, window_size) windows, self-supervised."""
+    """Train a model to predict tool wear from windows."""
 
     def __init__(
         self,
         model: nn.Module,
         train_config: TrainConfig,
-        horizon: int = 1,
         writer: SummaryWriter | None = None,
     ) -> None:
         self.logger = logger.bind(class_name=self.__class__.__name__)
         self.config = train_config
         # None when nobody is watching; the loop is otherwise unchanged
         self.writer = writer
-        # only read when the caller trains a forecaster
-        self.horizon = horizon
         self.train_result: TrainResult = TrainResult(
             train_losses=[],
             val_losses=[],
         )
-        if self.config.seed is not None:
-            # only covers training-time randomness such as dropout
-            set_seed(self.config.seed)
+        # only covers training-time randomness such as dropout
+        set_seed(self.config.seed)
         self.device = resolve_device(self.config.device)
         self.model = model.to(self.device)
         self.loss_fn = nn.MSELoss()
@@ -49,24 +45,15 @@ class Trainer:
             weight_decay=self.config.weight_decay,
         )
 
-    def train_step(
-        self,
-        dataloader: TorchDataLoader,
-        is_forecasting: bool,
-    ) -> float:
+    def train_step(self, dataloader: TorchDataLoader) -> float:
         """One epoch of training. Returns the mean loss."""
         self.model.train()
         # the running sum stays on the device: reading it every batch would
         # sync the host and stall the next batch's loading
         total = torch.zeros((), device=self.device)
         n_windows = 0
-        for windows, _, _ in dataloader:
-            batch: Tensor = windows.to(self.device, non_blocking=True)
-            inputs, targets = (
-                self.split(batch, self.horizon)
-                if is_forecasting
-                else self.reconstruct(batch)
-            )
+        for windows, wear, _ in dataloader:
+            inputs, targets = self.to_device(windows, wear)
             loss: Tensor = self.loss_fn(self.model(inputs), targets)
 
             loss.backward()
@@ -74,38 +61,28 @@ class Trainer:
             self.optimizer.zero_grad()
 
             # weight by batch size: a partial last batch must count for less
-            total += loss.detach() * batch.shape[0]
-            n_windows += batch.shape[0]
+            total += loss.detach() * windows.shape[0]
+            n_windows += windows.shape[0]
         return float(total) / n_windows
 
     @torch.inference_mode()
-    def val_step(
-        self,
-        dataloader: TorchDataLoader,
-        is_forecasting: bool,
-    ) -> float:
+    def val_step(self, dataloader: TorchDataLoader) -> float:
         """One pass over held-out windows. Returns the mean loss."""
         self.model.eval()
         total = torch.zeros((), device=self.device)
         n_windows = 0
-        for windows, _, _ in dataloader:
-            batch: Tensor = windows.to(self.device, non_blocking=True)
-            inputs, targets = (
-                self.split(batch, self.horizon)
-                if is_forecasting
-                else self.reconstruct(batch)
-            )
+        for windows, wear, _ in dataloader:
+            inputs, targets = self.to_device(windows, wear)
             loss: Tensor = self.loss_fn(self.model(inputs), targets)
             # weight by batch size: eval loaders keep their partial batch
-            total += loss * batch.shape[0]
-            n_windows += batch.shape[0]
+            total += loss * windows.shape[0]
+            n_windows += windows.shape[0]
         return float(total) / n_windows
 
     def train(
         self,
         train_dataloader: TorchDataLoader,
         val_dataloader: TorchDataLoader,
-        is_forecasting: bool,
     ) -> TrainResult:
         """Fit the model, keeping the weights with the lowest val loss."""
         best_loss, best_state, waited = float('inf'), None, 0
@@ -116,14 +93,8 @@ class Trainer:
             optimizer=self.optimizer.__class__.__name__,
         )
         for epoch in tqdm(range(1, self.config.epochs + 1), desc='training'):
-            train_loss = self.train_step(
-                dataloader=train_dataloader,
-                is_forecasting=is_forecasting,
-            )
-            val_loss = self.val_step(
-                dataloader=val_dataloader,
-                is_forecasting=is_forecasting,
-            )
+            train_loss = self.train_step(dataloader=train_dataloader)
+            val_loss = self.val_step(dataloader=val_dataloader)
             self.train_result.train_losses.append(train_loss)
             self.train_result.val_losses.append(val_loss)
             self.logger.info(
@@ -163,12 +134,21 @@ class Trainer:
         self.logger.info('Best validation loss: {loss:.6f}', loss=best_loss)
         return self.train_result
 
-    @staticmethod
-    def reconstruct(windows: Tensor) -> tuple[Tensor, Tensor]:
-        """Pair a window with itself: the model rebuilds its own input."""
-        return windows, windows
+    def to_device(
+        self, windows: Tensor, wear: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        """Move a batch to the device as (windows, target wear)."""
+        return (
+            windows.to(self.device, non_blocking=True),
+            self.tool_wear(wear.to(self.device, non_blocking=True)),
+        )
 
     @staticmethod
-    def split(windows: Tensor, horizon: int) -> tuple[Tensor, Tensor]:
-        """Shift windows along time into (input, target)."""
-        return windows[..., :-horizon], windows[..., horizon:]
+    def tool_wear(wear: Tensor) -> Tensor:
+        """Worst flute, in mm, shaped (batch, 1).
+
+        mm rather than 10^-3 mm keeps the target near the scale of a freshly
+        initialised output layer. Unlabelled (NaN) windows must not reach
+        the trainer: NaN makes the loss non-finite.
+        """
+        return wear.amax(dim=1, keepdim=True) / 1000

@@ -19,3 +19,21 @@ class TrainResult:
 
     train_losses: list[float]
     val_losses: list[float]
+
+
+@dataclass
+class Metrics:
+    """Per-cut wear error, in mm."""
+
+    rmse: float
+    mae: float
+    r2: float
+
+
+@dataclass
+class EvalResult:
+    """Cut-level predictions and the metrics derived from them."""
+
+    predictions: np.ndarray  # (n_cuts,) predicted wear, mm
+    targets: np.ndarray  # (n_cuts,) measured worst-flute wear, mm
+    metrics: Metrics
