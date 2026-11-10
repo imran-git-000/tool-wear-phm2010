@@ -11,11 +11,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         '--mode',
-        choices=('train', 'train-all'),
+        choices=('train', 'train-all', 'tune'),
         default='train',
         help='train: train on the other labelled cutters, test on --cutter. '
         'train-all: leave-one-cutter-out over every labelled cutter. '
+        'tune: nested leave-one-cutter-out random search. '
         '(default: train)',
+    )
+    parser.add_argument(
+        '--trials',
+        type=int,
+        default=20,
+        help='random configs tried per test cutter in tune (default: 20)',
     )
     parser.add_argument(
         '--cutter',
