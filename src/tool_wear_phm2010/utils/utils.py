@@ -1,6 +1,29 @@
+import argparse
 import random
 
 import torch
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog='tool_wear_phm2010',
+        description='Train and evaluate a tool wear regressor on PHM 2010.',
+    )
+    parser.add_argument(
+        '--mode',
+        choices=('train', 'train-all'),
+        default='train',
+        help='train: train on the other labelled cutters, test on --cutter. '
+        'train-all: leave-one-cutter-out over every labelled cutter. '
+        '(default: train)',
+    )
+    parser.add_argument(
+        '--cutter',
+        default=None,
+        help='test cutter for train, one of the labelled cutters in the '
+        'config (e.g. c4)',
+    )
+    return parser
 
 
 def resolve_device(device: str) -> torch.device:

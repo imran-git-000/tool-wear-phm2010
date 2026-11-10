@@ -1,6 +1,12 @@
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import yaml
 
 from tool_wear_phm2010.data_types.enums import Aggregation
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass
@@ -54,7 +60,24 @@ class EvalConfig:
 
 @dataclass
 class Config:
+    """The whole config file: one field per top-level YAML section."""
+
     data_config: DataConfig
     model_config: ModelConfig
     train_config: TrainConfig
     eval_config: EvalConfig
+
+
+class ConfigLoader:
+    """Load a config file into the dataclasses."""
+
+    @staticmethod
+    def load_config(path: Path) -> Config:
+        """Read the YAML file into the config dataclasses."""
+        raw_dict = yaml.safe_load(path.read_text(encoding='utf-8'))
+        return Config(
+            data_config=DataConfig(**raw_dict['data']),
+            model_config=ModelConfig(**raw_dict['model']),
+            train_config=TrainConfig(**raw_dict['training']),
+            eval_config=EvalConfig(**raw_dict['evaluation']),
+        )
