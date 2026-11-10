@@ -4,6 +4,17 @@ from tool_wear_phm2010.data_types.enums import Aggregation
 
 
 @dataclass
+class DataConfig:
+    """Which cutters to use and how to batch their windows."""
+
+    cutters: list[str]  # labelled cutters; each one is the test set once
+    val_fraction: float  # share of training cuts held out for validation
+    hop: int
+    batch_size: int
+    num_workers: int
+
+
+@dataclass
 class ModelConfig:
     """Transformer encoder hyperparameters."""
 
@@ -39,3 +50,11 @@ class EvalConfig:
 
     def __post_init__(self) -> None:
         self.aggregation = Aggregation(self.aggregation)
+
+
+@dataclass
+class Config:
+    data_config: DataConfig
+    model_config: ModelConfig
+    train_config: TrainConfig
+    eval_config: EvalConfig

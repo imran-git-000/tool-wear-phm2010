@@ -37,3 +37,12 @@ class EvalResult:
     predictions: np.ndarray  # (n_cuts,) predicted wear, mm
     targets: np.ndarray  # (n_cuts,) measured worst-flute wear, mm
     metrics: Metrics
+
+
+@dataclass
+class RunResult:
+    """One leave-one-cutter-out fold."""
+
+    test_cutter: str
+    eval_result: EvalResult
+    train_result: TrainResult
